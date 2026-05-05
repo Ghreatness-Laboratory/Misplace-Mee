@@ -1,67 +1,61 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const NotFound: React.FC = () => {
   const navigate = useNavigate();
+
   return (
-    <div data-testid="not-found-page" className="bg-white">
-      <div className="container flex items-center min-h-[75vh] px-6 py-12 mx-auto">
-        <div className="flex flex-col items-center max-w-sm mx-auto text-center">
-          <p className="p-3 text-sm font-medium text-red-500 rounded-full bg-red-50">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="2"
-              stroke="currentColor"
-              className="w-6 h-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-              />
+    <div
+      data-testid="not-found-page"
+      className="min-h-[80vh] flex items-center justify-center bg-gray-50 px-4"
+    >
+      <div className="text-center max-w-md mx-auto">
+        {/* Icon */}
+        <div className="relative inline-flex items-center justify-center mb-8">
+          <div className="w-32 h-32 rounded-full bg-blue-100 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 576 512" fill="currentColor" className="text-blue-500">
+              <path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/>
             </svg>
-          </p>
-          <h1 className="mt-3 text-2xl font-semibold text-gray-800 md:text-3xl">
-            Page not found
-          </h1>
-          <p className="mt-4 text-gray-500">
-            The page you are looking for doesn&apos;t exist.
-          </p>
-
-          <div className="flex items-center w-full mt-6 gap-x-3 shrink-0 sm:w-auto">
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center justify-center w-1/2 px-5 py-2 text-sm text-gray-700 transition-colors duration-200 bg-white border rounded-lg gap-x-2 sm:w-auto hover:bg-gray-100"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.5"
-                stroke="currentColor"
-                className="w-5 h-5 rtl:rotate-180"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6.75 15.75L3 12m0 0l3.75-3.75M3 12h18"
-                />
-              </svg>
-              <span>Go home</span>
-            </button>
-
-            <button
-              onClick={() => navigate("/about-us")}
-              className="w-1/2 px-5 py-2 text-sm tracking-wide text-white transition-colors duration-200 bg-blue-500 rounded-lg shrink-0 sm:w-auto hover:bg-blue-600"
-            >
-              Contact us
-            </button>
           </div>
+          <span className="absolute -top-1 -right-1 w-9 h-9 bg-yellow-400 text-white font-black text-lg rounded-full flex items-center justify-center shadow-md">?</span>
+        </div>
+
+        <p className="text-8xl font-black text-blue-600 leading-none mb-2">404</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-3">Looks like this page got lost</h1>
+        <p className="text-gray-500 leading-relaxed mb-8">
+          We searched the whole campus but couldn't find this page. It might have been
+          moved, deleted, or never existed — just like that item you lost last semester.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+            Go Back
+          </button>
+          <Link
+            to="/"
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 576 512" fill="currentColor">
+              <path d="M575.8 255.5c0 18-15 32.1-32 32.1l-32 0 .7 160.2c0 2.7-.2 5.4-.5 8.1l0 16.2c0 22.1-17.9 40-40 40l-16 0c-1.1 0-2.2 0-3.3-.1c-1.4 .1-2.8 .1-4.2 .1L416 512l-24 0c-22.1 0-40-17.9-40-40l0-24 0-64c0-17.7-14.3-32-32-32l-64 0c-17.7 0-32 14.3-32 32l0 64 0 24c0 22.1-17.9 40-40 40l-24 0-31.9 0c-1.5 0-3-.1-4.5-.2c-1.2 .1-2.4 .2-3.6 .2l-16 0c-22.1 0-40-17.9-40-40l0-112c0-.9 0-1.9 .1-2.8l0-69.7-32 0c-18 0-32-14-32-32.1c0-9 3-17 10-24L266.4 8c7-7 15-8 22-8s15 2 21 7L564.8 231.5c8 7 12 15 11 24z"/>
+            </svg>
+            Browse Lost Items
+          </Link>
+        </div>
+
+        <div className="mt-10 pt-8 border-t border-gray-200 flex flex-wrap items-center justify-center gap-4 text-sm text-gray-400">
+          <Link to="/about-us" className="hover:text-blue-600 transition-colors">About Us</Link>
+          <span>·</span>
+          <Link to="/login" className="hover:text-blue-600 transition-colors">Admin Login</Link>
         </div>
       </div>
     </div>
   );
 };
+
 export default NotFound;
