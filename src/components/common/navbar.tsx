@@ -48,6 +48,8 @@ export const universities = [
   },
 ];
 
+const AUTH_PATHS = ["/login", "/register"];
+
 const Navbar: React.FC<NavbarProps> = ({ isNavbarOpen, handleNavClick }) => {
   const [, setSelectedMenu] = useState<number | null>(null);
   const [currentLogo, setCurrentLogo] = useState<string>("");
@@ -56,6 +58,8 @@ const Navbar: React.FC<NavbarProps> = ({ isNavbarOpen, handleNavClick }) => {
   const [currentSocialMedia, setCurrentSocialMedia] = useState<SocialMediaLinks>({});
   const [isLoggedIn] = useState(false);
   const location = useLocation();
+
+  if (AUTH_PATHS.includes(location.pathname)) return null;
 
   const isAdminArea =
     location.pathname === "/home" ||
