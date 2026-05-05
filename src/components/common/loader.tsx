@@ -5,11 +5,16 @@ const Loader: React.FC = () => {
     <div data-testid="loader" className="min-h-[70vh] flex justify-center items-center">
       <svg className="w-16 h-16 animate-spin" viewBox="25 25 50 50">
         <circle
-          className="fill-none stroke-blue-500 stroke-[2] stroke-dasharray-[1_200] stroke-dashoffset-0 stroke-linecap-round"
           cx="50"
           cy="50"
           r="20"
           style={{
+            fill: "none",
+            stroke: "#3b82f6",
+            strokeWidth: 2,
+            strokeLinecap: "round",
+            strokeDasharray: "1, 200",
+            strokeDashoffset: 0,
             animation: "dash 1.5s ease-in-out infinite",
           }}
         />
