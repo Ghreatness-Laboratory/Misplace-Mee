@@ -1,18 +1,17 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { FaTimes } from "react-icons/fa";
 import { ACCESS_TOKEN, CSRF_TOKEN } from "../../constants";
 import { BASE_URL } from "../../hooks/useFetch";
+import { getCategoryColor, getCategoryEmoji } from "../common/filter";
 
 interface ReportFormData {
   title: string;
   description: string;
   location: string;
-  status: "lost" | "found";
-  reporter?: number;
   phone_number: string;
   image?: File;
-  id?: number;
+  category?: string;
+  status?: string;
 }
 
 interface ReportPreviewProps {
@@ -22,7 +21,7 @@ interface ReportPreviewProps {
   description: string;
   location?: string;
   phone_number?: string;
-  status?: "lost" | "found";
+  category?: string;
   onReportSubmit: () => void;
   onCancel: () => void;
   isOpen: boolean;
@@ -35,7 +34,7 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
   description,
   location,
   phone_number,
-  status,
+  category,
   onCancel,
   onReportSubmit,
   isOpen,
@@ -47,16 +46,19 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
   useEffect(() => {
     if (image && image instanceof File) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviewUrl(reader.result as string);
-      };
+      reader.onloadend = () => setImagePreviewUrl(reader.result as string);
       reader.readAsDataURL(image);
     }
   }, [image]);
 
+  useEffect(() => {
+    if (isOpen) document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = "auto"; };
+  }, [isOpen]);
+
   const validateFormData = (data: Partial<ReportFormData>): boolean => {
-    if (!data.title || data.title.length < 1 || data.title.length > 30) {
-      setSubmissionError("Title must be between 1 and 30 characters");
+    if (!data.title || data.title.length < 1 || data.title.length > 100) {
+      setSubmissionError("Title must be between 1 and 100 characters");
       return false;
     }
     if (!data.description || data.description.length < 1) {
@@ -67,16 +69,8 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
       setSubmissionError("Location is required");
       return false;
     }
-    if (
-      !data.phone_number ||
-      data.phone_number.length < 1 ||
-      data.phone_number.length > 11
-    ) {
-      setSubmissionError("Phone number must be between 1 and 11 characters");
-      return false;
-    }
-    if (!data.status || !["lost", "found"].includes(data.status)) {
-      setSubmissionError("Status must be either 'lost' or 'found'");
+    if (!data.phone_number || data.phone_number.length < 1) {
+      setSubmissionError("Phone number is required");
       return false;
     }
     return true;
@@ -95,13 +89,12 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
       return;
     }
 
-    const formData = new FormData();
     const reportData: ReportFormData = {
       title: title || "",
-      description: description,
+      description,
       location: location || "",
-      status: status || "lost",
       phone_number: phone_number || "",
+      category: category || "",
     };
 
     if (!validateFormData(reportData)) {
@@ -109,13 +102,13 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
       return;
     }
 
+    const formData = new FormData();
     Object.entries(reportData).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
         formData.append(key, value.toString());
       }
     });
 
-    // Handle image upload
     if (image && image instanceof File) {
       formData.append("image", image);
     }
@@ -138,12 +131,11 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
           error.response?.data?.detail ||
           error.response?.data?.message ||
           "Failed to submit the report. Please try again.";
-        setSubmissionError(errorMessage);
-
-        // Handle token expiration
-        if (error.response?.status === 401) {
-          setSubmissionError("Your session has expired. Please log in again.");
-        }
+        setSubmissionError(
+          error.response?.status === 401
+            ? "Your session has expired. Please log in again."
+            : errorMessage
+        );
       } else {
         setSubmissionError("An unexpected error occurred. Please try again.");
       }
@@ -154,114 +146,117 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
 
   if (!isOpen) return null;
 
+  const formattedDate = date_reported
+    ? new Date(date_reported).toLocaleDateString("en-NG", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : date_reported;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex justify-between items-center">
-          <h3 className="text-xl font-semibold text-gray-800">
-            Preview Report
-          </h3>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
+
+      {/* Panel */}
+      <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="text-lg font-bold text-gray-900">Preview Report</h3>
           <button
             onClick={onCancel}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-600"
           >
-            <FaTimes size={20} />
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
           </button>
         </div>
 
-        <div className="relative">
-          {imagePreviewUrl ? (
-            <img
-              src={imagePreviewUrl}
-              alt="Lost and Found Item"
-              className="w-full h-56 object-cover"
-            />
-          ) : (
-            <div className="w-full h-56 bg-gray-200 flex items-center justify-center">
-              <span className="text-gray-500">No image available</span>
-            </div>
-          )}
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div className="text-center">
-            <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
-            {/* <p className="text-gray-700">Status: {status}</p> */}
-            <p className="text-gray-700">Location: {location}</p>
-            {phone_number && (
-              <p className="text-gray-600 mt-2">Contact: {phone_number}</p>
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1">
+          {/* Image */}
+          <div className="relative">
+            {imagePreviewUrl ? (
+              <img
+                src={imagePreviewUrl}
+                alt="Preview"
+                className="w-full h-52 object-cover"
+              />
+            ) : (
+              <div className="w-full h-52 bg-gray-100 flex items-center justify-center text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 640 512" fill="currentColor">
+                  <path d="M480 80C480 35.8 515.8 0 560 0C604.2 0 640 35.8 640 80C640 124.2 604.2 160 560 160C515.8 160 480 124.2 480 80zM0 456.1C0 445.6 2.4 435.3 7.2 425.9L151.2 125.9C160.1 107.8 178.5 96 198.7 96C218.9 96 237.3 107.8 246.2 125.9L333.1 304.3C339.7 318 355.1 326.6 371.5 326.6C382.7 326.6 393.4 322 401.3 313.6L420.4 292.5C428.4 284.1 438.9 280 449.6 280C463.7 280 476.6 286.9 484.5 298.6L572.6 431.3C582.1 445.1 576.1 464 560 464H48C21.5 464 0 442.5 0 416V456.1z"/>
+                </svg>
+              </div>
             )}
-            <div className="flex items-center justify-center gap-2 text-gray-600 mb-3">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 27 27"
-                fill="none"
-              >
-                <path
-                  d="M21.375 6.75H5.625C4.38236 6.75 3.375 7.75736 3.375 9V21.375C3.375 22.6176 4.38236 23.625 5.625 23.625H21.375C22.6176 23.625 23.625 22.6176 23.625 21.375V9C23.625 7.75736 22.6176 6.75 21.375 6.75Z"
-                  stroke="#1E1E1E"
-                  strokeWidth="2.66667"
-                />
-                <path
-                  d="M3.375 11.25C3.375 9.12825 3.375 8.0685 4.03425 7.40925C4.6935 6.75 5.75325 6.75 7.875 6.75H19.125C21.2467 6.75 22.3065 6.75 22.9657 7.40925C23.625 8.0685 23.625 9.12825 23.625 11.25H3.375Z"
-                  fill="#1E1E1E"
-                />
-                <path
-                  d="M7.875 3.375V6.75M19.125 3.375V6.75"
-                  stroke="#1E1E1E"
-                  strokeWidth="2.66667"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M11.8125 13.5H8.4375C8.12684 13.5 7.875 13.7518 7.875 14.0625V15.1875C7.875 15.4982 8.12684 15.75 8.4375 15.75H11.8125C12.1232 15.75 12.375 15.4982 12.375 15.1875V14.0625C12.375 13.7518 12.1232 13.5 11.8125 13.5Z"
-                  fill="#1E1E1E"
-                />
-                <path
-                  d="M11.8125 18H8.4375C8.12684 18 7.875 18.2518 7.875 18.5625V19.6875C7.875 19.9982 8.12684 20.25 8.4375 20.25H11.8125C12.1232 20.25 12.375 19.9982 12.375 19.6875V18.5625C12.375 18.2518 12.1232 18 11.8125 18Z"
-                  fill="#1E1E1E"
-                />
-                <path
-                  d="M18.5625 13.5H15.1875C14.8768 13.5 14.625 13.7518 14.625 14.0625V15.1875C14.625 15.4982 14.8768 15.75 15.1875 15.75H18.5625C18.8732 15.75 19.125 15.4982 19.125 15.1875V14.0625C19.125 13.7518 18.8732 13.5 18.5625 13.5Z"
-                  fill="#1E1E1E"
-                />
-                <path
-                  d="M18.5625 18H15.1875C14.8768 18 14.625 18.2518 14.625 18.5625V19.6875C14.625 19.9982 14.8768 20.25 15.1875 20.25H18.5625C18.8732 20.25 19.125 19.9982 19.125 19.6875V18.5625C19.125 18.2518 18.8732 18 18.5625 18Z"
-                  fill="#1E1E1E"
-                />
-              </svg>
-              <p className="text-sm">{date_reported}</p>
-            </div>
-
-            <p className="text-gray-600 text-sm leading-relaxed">
-              {description}
-            </p>
+            {/* Category badge on image */}
+            {category && (
+              <div className="absolute top-3 left-3">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border shadow-sm ${getCategoryColor(category)}`}>
+                  <span>{getCategoryEmoji(category)}</span>
+                  {category}
+                </span>
+              </div>
+            )}
           </div>
 
-          {submissionError && (
-            <p className="text-red-500 text-center text-sm bg-red-50 p-2 rounded">
-              {submissionError}
-            </p>
-          )}
+          {/* Details */}
+          <div className="p-5 space-y-4">
+            <h4 className="text-xl font-bold text-gray-900">{title}</h4>
 
-          <div className="flex gap-3">
-            <button
-              onClick={handleReportSubmit}
-              className={`flex-1 bg-blue-400 text-white px-4 py-2 rounded-md active:bg-blue-500 md:hover:bg-blue-500 transition-colors ${
-                isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Submitting..." : "Submit"}
-            </button>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-start gap-2 text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 384 512" fill="currentColor" className="text-blue-500 mt-0.5 flex-shrink-0">
+                  <path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/>
+                </svg>
+                <span>{location || "—"}</span>
+              </div>
+              <div className="flex items-start gap-2 text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 448 512" fill="currentColor" className="text-blue-500 mt-0.5 flex-shrink-0">
+                  <path d="M128 0c17.7 0 32 14.3 32 32l0 32 128 0 0-32c0-17.7 14.3-32 32-32s32 14.3 32 32l0 32 48 0c26.5 0 48 21.5 48 48l0 48L0 160l0-48C0 85.5 21.5 64 48 64l48 0 0-32c0-17.7 14.3-32 32-32zM0 192l448 0 0 272c0 26.5-21.5 48-48 48L48 512c-26.5 0-48-21.5-48-48L0 192zm64 80l0 32c0 8.8 7.2 16 16 16l32 0c8.8 0 16-7.2 16-16l0-32c0-8.8-7.2-16-16-16l-32 0c-8.8 0-16 7.2-16 16z"/>
+                </svg>
+                <span>{formattedDate || "—"}</span>
+              </div>
+              <div className="flex items-start gap-2 text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512" fill="currentColor" className="text-blue-500 mt-0.5 flex-shrink-0">
+                  <path d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z"/>
+                </svg>
+                <span>+234 {phone_number || "—"}</span>
+              </div>
+            </div>
 
-            <button
-              onClick={onCancel}
-              className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-md active:bg-gray-300 md:hover:bg-gray-300 transition-colors"
-            >
-              Cancel
-            </button>
+            {description && (
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
+              </div>
+            )}
+
+            {submissionError && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512" fill="currentColor" className="mt-0.5 flex-shrink-0">
+                  <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c13.3 0 24 10.7 24 24l0 112c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-112c0-13.3 10.7-24 24-24zm-24 224a24 24 0 1 1 48 0 24 24 0 1 1 -48 0z"/>
+                </svg>
+                {submissionError}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleReportSubmit}
+                disabled={isSubmitting}
+                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Submitting…" : "Confirm & Submit"}
+              </button>
+              <button
+                onClick={onCancel}
+                className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition-colors"
+              >
+                Go Back
+              </button>
+            </div>
           </div>
         </div>
       </div>
