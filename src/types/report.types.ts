@@ -9,4 +9,5 @@ export interface ReportProps {
   reporter: number;
   phone_number: string;
   image: string;
+  category?: string;
 }

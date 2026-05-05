@@ -1,66 +1,55 @@
 import axios from "axios";
 import React, { useEffect, useMemo, useState } from "react";
-import { FaClock, FaSearch } from "react-icons/fa";
 import { ACCESS_TOKEN, CSRF_TOKEN } from "../../constants";
 import useFetch, { BASE_URL } from "../../hooks/useFetch";
 import { ReportProps } from "../../types/report.types";
+import { getCategoryColor, getCategoryEmoji } from "../common/filter";
 import Loader from "../common/loader";
-
-interface EditableReport extends ReportProps {
-  isEditing: boolean;
-}
+import EditReportModal from "./editReportModal";
 
 const ReportsHistory: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const itemsPerPage = 4;
+  const itemsPerPage = 8;
 
-  const [isFetchingReports, setIsFetchingReports] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [deleteAndEditError, setDeleteAndEditError] = useState<string | null>(
-    null
-  );
+  const [deleting, setDeleting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [editingReport, setEditingReport] = useState<ReportProps | null>(null);
 
   const { data: reports, error } = useFetch<ReportProps[]>("/reports/");
-  const [reportList, setReportList] = useState<EditableReport[]>([]);
+  const [reportList, setReportList] = useState<ReportProps[]>([]);
 
   useEffect(() => {
-    if (reports) {
-      setReportList(
-        reports.map((report) => ({
-          ...report,
-          id: report.id ?? 0,
-          isEditing: false,
-        }))
-      );
-    }
-    setIsFetchingReports(false);
+    if (reports) setReportList(reports.map((r) => ({ ...r, id: r.id ?? 0 })));
   }, [reports]);
 
-  const filteredItems = useMemo(() => {
-    return reportList.filter(
-      (report) =>
-        report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.location.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [reportList, searchTerm]);
+  const filteredItems = useMemo(
+    () =>
+      reportList.filter(
+        (r) =>
+          r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          r.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (r.description ?? "").toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [reportList, searchTerm]
+  );
 
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
 
   const paginatedItems = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredItems.slice(startIndex, startIndex + itemsPerPage);
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredItems.slice(start, start + itemsPerPage);
   }, [filteredItems, currentPage]);
 
   const handleDelete = async (id: number) => {
-    setLoading(true);
-    setDeleteAndEditError(null);
+    if (!window.confirm("Delete this report? This cannot be undone.")) return;
+    setDeleting(true);
+    setActionError(null);
 
     const accessToken = localStorage.getItem(ACCESS_TOKEN);
-
     if (!CSRF_TOKEN || !accessToken) {
-      setDeleteAndEditError("Missing CSRF or access token");
-      setLoading(false);
+      setActionError("Authentication error. Please log in again.");
+      setDeleting(false);
       return;
     }
 
@@ -72,345 +61,209 @@ const ReportsHistory: React.FC = () => {
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      setReportList((currentReports) =>
-        currentReports.filter((report) => report.id !== id)
-      );
-      alert("Report deleted successfully!");
-    } catch (error) {
-      setDeleteAndEditError("Failed to delete report. Please try again later.");
-      console.error(error);
+      setReportList((prev) => prev.filter((r) => r.id !== id));
+    } catch {
+      setActionError("Failed to delete. Please try again.");
     } finally {
-      setLoading(false);
+      setDeleting(false);
     }
   };
 
-  const handleEditToggle = async (id: number) => {
-    const reportToUpdate = reportList.find((report) => report.id === id);
-    if (!reportToUpdate) return;
-
-    setLoading(true);
-    setDeleteAndEditError(null);
-
-    const accessToken = localStorage.getItem(ACCESS_TOKEN);
-
-    if (!CSRF_TOKEN || !accessToken) {
-      setDeleteAndEditError("Missing CSRF or access token");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setReportList((currentReports) =>
-        currentReports.map((report) =>
-          report.id === id
-            ? { ...report, isEditing: !report.isEditing }
-            : report
-        )
-      );
-
-      if (reportToUpdate.isEditing) {
-        const formData = new FormData();
-        formData.append("title", reportToUpdate.title);
-        formData.append("description", reportToUpdate.description);
-        formData.append("location", reportToUpdate.location);
-        formData.append("phone_number", reportToUpdate.phone_number);
-        if (reportToUpdate.status) {
-          formData.append("status", reportToUpdate.status);
-        }
-
-        await axios.patch(`${BASE_URL}/reports/${id}`, formData, {
-          headers: {
-            accept: "application/json",
-            "Content-Type": "multipart/form-data",
-            "X-CSRFTOKEN": CSRF_TOKEN,
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-        alert("Report updated successfully!");
-      }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        setDeleteAndEditError(
-          `Failed to edit report: ${
-            error.response?.data?.message || error.message
-          }`
-        );
-      } else {
-        setDeleteAndEditError("Failed to edit report. Please try again later.");
-      }
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+  const handleSaved = (updated: ReportProps) => {
+    setReportList((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
   };
 
-  const handleUpdateReport = (
-    idToUpdate: number,
-    field: keyof ReportProps,
-    value: string | { day: number; month: number; year: number }
-  ) => {
-    setReportList((currentReports) =>
-      currentReports.map((report) =>
-        report.id === idToUpdate ? { ...report, [field]: value } : report
-      )
-    );
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  if (isFetchingReports || !reports) {
-    return <Loader />;
-  }
+  if (!reports && !error) return <Loader />;
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] my-10 max-w-[1280px] mx-4 sm:mx-8 xl:mx-auto px-4 sm:px-8 lg:px-10 bg-red-50/10 text-red-500 rounded-lg shadow-sm text-center">
-        <h1 className="text-3xl font-bold">Oops!</h1>
-        <p className="text-lg mt-2">
-          Something went wrong while fetching the reports.
-        </p>
-        <p className="text-base mt-1">
-          Error {error.status}: {error.message}
-        </p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-red-500 text-center p-8">
+        <h1 className="text-3xl font-bold mb-2">Oops!</h1>
+        <p className="text-lg">Something went wrong while fetching the reports.</p>
+        <p className="text-base mt-1">Error {error.status}: {error.message}</p>
         <button
-          className="mt-4 py-2 px-6 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all"
+          className="mt-4 py-2 px-6 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all"
           onClick={() => window.location.reload()}
         >
-          Reload Page
+          Reload
         </button>
       </div>
     );
   }
+
   return (
-    <section>
-      <div className="relative mb-4 lg:px-0 w-full md:max-w-xl">
-        <input
-          type="text"
-          placeholder="Search reports..."
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="w-full pl-12 py-2 border-2 rounded-md outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <FaSearch
-          className="absolute top-1/2 left-5 -translate-y-1/2"
-          color="gray"
-        />
-      </div>
+    <>
+      <EditReportModal
+        report={editingReport}
+        onClose={() => setEditingReport(null)}
+        onSaved={handleSaved}
+      />
 
-      <div className="flex max-md:flex-col md:items-center justify-between">
-        <div className="flex items-center gap-3 mb-4 px-0">
-          <h2 className="text-lg font-medium text-gray-800">
-            Number of reports
-          </h2>
-          <span className="px-3 py-1 text-sm text-blue-600 bg-blue-50 rounded-md">
-            {filteredItems.length}
-          </span>
-        </div>
-        {deleteAndEditError && (
-          <p className="text-red-500 text-sm bg-red-50 p-2 rounded">
-            {deleteAndEditError}
-          </p>
-        )}
-        {loading && (
-          <p className="text-blue-400 text-sm bg-blue-50 p-2 rounded">
-            Loading...
-          </p>
-        )}
-      </div>
+      <section>
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div className="relative max-w-sm w-full">
+            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512" fill="currentColor">
+                <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Search by title, location or description…"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 transition-colors"
+            />
+          </div>
 
-      {filteredItems.length === 0 ? (
-        <div className="grid place-items-center min-h-[50vh] px-4">
-          <div className="flex flex-col items-center gap-4 p-6">
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-800">
-              No Results Found
-            </h1>
-            <p className="text-center text-gray-600 max-w-md">
-              We couldn&apos;t find anything matching your search or filters.
-              Please try again.
-            </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            {actionError && (
+              <span className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg">
+                {actionError}
+              </span>
+            )}
+            {deleting && (
+              <span className="text-red-500 text-sm bg-red-50 px-3 py-1.5 rounded-lg animate-pulse">
+                Deleting…
+              </span>
+            )}
+            <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg font-medium">
+              {filteredItems.length} report{filteredItems.length !== 1 ? "s" : ""}
+            </span>
           </div>
         </div>
-      ) : (
-        <>
-          <div className="flex flex-col mt-6 min-h-[60vh] ">
-            <div className="border border-gray-200 md:rounded-lg overflow-x-auto">
-              <table className="w-full min-w-[800px] divide-y divide-gray-200">
+
+        {filteredItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-[40vh] text-center py-16">
+            <div className="text-5xl mb-4">📋</div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">No reports found</h3>
+            <p className="text-gray-500">
+              {searchTerm ? "No results match your search." : "No reports have been submitted yet."}
+            </p>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Table */}
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
+              <table className="w-full min-w-[750px] divide-y divide-gray-100">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th
-                      scope="col"
-                      className="py-3.5 px-4 text-sm font-normal text-left text-gray-500"
-                    >
-                      <div className="flex items-center gap-x-3">
-                        <span>Report Item</span>
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-12 py-3.5 text-sm font-normal flex sm:block justify-center text-gray-500"
-                    >
-                      <button className="flex items-center gap-x-2">
-                        <span>Date</span>
-                        <FaClock />
-                      </button>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-10 py-3.5 text-sm font-normal text-left text-gray-500"
-                    >
-                      <button className="flex items-center gap-x-2">
-                        <span>Location</span>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth="2"
-                          stroke="currentColor"
-                          className="w-4 h-4"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
-                          />
-                        </svg>
-                      </button>
-                    </th>
-                    <th
-                      scope="col"
-                      className="relative py-3.5 px-4 text-sm font-normal text-gray-500 text-left"
-                    >
-                      <span className="sr-only">Actions</span>
-                      Actions
-                    </th>
+                    <th className="py-3.5 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-[35%]">Item</th>
+                    <th className="py-3.5 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
+                    <th className="py-3.5 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                    <th className="py-3.5 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</th>
+                    <th className="py-3.5 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                    <th className="py-3.5 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-50">
                   {paginatedItems.map((report) => (
-                    <tr key={report.id}>
-                      <td className="px-2 md:px-4 py-4 md:py-5 text-sm font-medium text-gray-700">
-                        <div className="inline-flex items-center gap-x-3">
-                          <div className="flex items-center gap-x-2">
-                            <div className="w-20 h-14 md:w-40 md:h-20">
-                              <img
-                                className="object-cover rounded-md w-full h-full"
-                                src={report.image}
-                                alt={report.title}
-                              />
-                            </div>
-                            {report.isEditing ? (
-                              <input
-                                type="text"
-                                value={report.title}
-                                onChange={(e) =>
-                                  handleUpdateReport(
-                                    report.id,
-                                    "title",
-                                    e.target.value
-                                  )
-                                }
-                                className="border px-2 py-1 rounded lg:w-[300px] md:text-lg"
-                              />
-                            ) : (
-                              <h2 className="font-medium md:text-lg w-[200px] md:w-[250px] lg:w-[300px] text-gray-800 overflow-hidden">
-                                {report.title}
-                              </h2>
+                    <tr
+                      key={report.id}
+                      className="hover:bg-blue-50/30 transition-colors"
+                    >
+                      {/* Item thumbnail + title + phone */}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            className="w-14 h-14 object-cover rounded-xl flex-shrink-0 border border-gray-100"
+                            src={report.image}
+                            alt={report.title}
+                          />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 text-sm truncate max-w-[200px]">
+                              {report.title}
+                            </p>
+                            {report.description && (
+                              <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[200px]">
+                                {report.description}
+                              </p>
+                            )}
+                            {report.phone_number && (
+                              <p className="text-xs text-blue-500 mt-0.5">+234 {report.phone_number}</p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-12 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">
-                        <div className="inline-flex items-center px-3 py-1 rounded-full gap-x-2 bg-emerald-100/60">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                          <h2 className="text-sm font-normal text-emerald-500">
-                            {report.date_reported}
-                          </h2>
-                        </div>
-                      </td>
-                      <td className="px-10 py-4 text-sm text-gray-500 whitespace-nowrap">
-                        {report.isEditing ? (
-                          <input
-                            type="text"
-                            value={report.location}
-                            onChange={(e) =>
-                              handleUpdateReport(
-                                report.id,
-                                "location",
-                                e.target.value
-                              )
-                            }
-                            className="border px-2 py-1 rounded lg:max-w-[150px] w-full "
-                          />
+
+                      {/* Category */}
+                      <td className="px-4 py-4">
+                        {report.category ? (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${getCategoryColor(report.category)}`}>
+                            {getCategoryEmoji(report.category)} {report.category}
+                          </span>
                         ) : (
-                          <div className="max-w-[150px] w-full">
-                            <p className="overflow-hidden">{report.location}</p>
-                          </div>
+                          <span className="text-gray-300 text-xs">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-sm whitespace-nowrap">
-                        <div className="flex items-center gap-x-6">
+
+                      {/* Status */}
+                      <td className="px-4 py-4">
+                        {report.status ? (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+                            report.status.toLowerCase() === "found"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-red-100 text-red-600"
+                          }`}>
+                            {report.status}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
+                      </td>
+
+                      {/* Location */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm text-gray-600 flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 384 512" fill="currentColor" className="text-blue-400 flex-shrink-0">
+                            <path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z" />
+                          </svg>
+                          <span className="truncate max-w-[120px]">{report.location}</span>
+                        </span>
+                      </td>
+
+                      {/* Date */}
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          {report.date_reported}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          {/* Edit — opens full modal */}
                           <button
-                            onClick={() => handleDelete(report.id)}
-                            className="text-gray-500 transition-colors duration-200 hover:text-red-500 focus:outline-none"
-                            disabled={loading}
+                            onClick={() => setEditingReport(report)}
+                            title="Edit all fields"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-semibold"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              strokeWidth="1.5"
-                              stroke="currentColor"
-                              className="w-5 h-5"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                              />
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 512 512" fill="currentColor">
+                              <path d="M471.6 21.7c-21.9-21.9-57.3-21.9-79.2 0L362.3 51.7l97.9 97.9 30.1-30.1c21.9-21.9 21.9-57.3 0-79.2L471.6 21.7zm-299.2 220c-6.1 6.1-10.8 13.6-13.5 21.9l-29.6 88.8c-2.9 8.6-.6 18.1 5.8 24.6s15.9 8.7 24.6 5.8l88.8-29.6c8.2-2.7 15.7-7.4 21.9-13.5L437.7 172.3 339.7 74.3 172.4 241.7zM96 64C43 64 0 107 0 160L0 416c0 53 43 96 96 96l256 0c53 0 96-43 96-96l0-96c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 96c0 17.7-14.3 32-32 32L96 448c-17.7 0-32-14.3-32-32L64 160c0-17.7 14.3-32 32-32l96 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L96 64z" />
                             </svg>
+                            Edit
                           </button>
 
+                          {/* Delete */}
                           <button
-                            onClick={() => handleEditToggle(report.id)}
-                            className="text-gray-500 transition-colors duration-200 hover:text-yellow-500 focus:outline-none"
-                            disabled={loading}
+                            onClick={() => handleDelete(report.id)}
+                            disabled={deleting}
+                            title="Delete report"
+                            className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-40"
                           >
-                            {report.isEditing ? (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth="1.5"
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              </svg>
-                            ) : (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth="1.5"
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-                                />
-                              </svg>
-                            )}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 448 512" fill="currentColor">
+                              <path d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -419,36 +272,47 @@ const ReportsHistory: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          </div>
 
-          {filteredItems.length > 0 && (
-            <div className="flex items-center justify-center gap-4 max-w-[600px] mx-auto mt-8 text-sm md:text-base">
-              <button
-                className={`py-2 px-4 bg-blue-400 text-white rounded-md hover:bg-blue-500 transition ${
-                  currentPage === 1 && "cursor-not-allowed opacity-50"
-                }`}
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
-              <span className="text-lg font-medium">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                className={`py-2 px-4 bg-blue-400 text-white rounded-md hover:bg-blue-500 transition ${
-                  currentPage === totalPages && "cursor-not-allowed opacity-50"
-                }`}
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </section>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-8">
+                <button
+                  className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-9 h-9 rounded-xl text-sm font-semibold transition-all ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "border border-gray-200 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-600"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </>
   );
 };
 

@@ -1,10 +1,12 @@
 import React from "react";
 import { ReportProps } from "../../types/report.types";
+import { getCategoryColor, getCategoryEmoji } from "./filter";
 
 interface ReportItemProps extends Partial<ReportProps> {
   style?: string;
   imageStyle?: string;
   children?: React.ReactNode;
+  onClick?: () => void;
 }
 
 const ReportItem: React.FC<ReportItemProps> = ({
@@ -12,69 +14,118 @@ const ReportItem: React.FC<ReportItemProps> = ({
   date_reported,
   image,
   location,
+  category,
+  status,
+  description,
   style,
   imageStyle,
   children,
+  onClick,
 }) => {
+  const formattedDate = date_reported
+    ? new Date(date_reported).toLocaleDateString("en-NG", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : date_reported;
+
+  if (children) {
+    return (
+      <div data-testid="report-item" className="p-0 md:p-4 w-full rounded-lg">
+        <div className={`${style}`}>
+          <img
+            src={image}
+            alt={`Lost and Found Item at ${location}`}
+            className={`object-cover w-full h-[180px] md:h-[200px] ${imageStyle}`}
+          />
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div data-testid="report-item" className="p-0 md:p-4 w-full rounded-lg">
-      <div className={`${style}`}>
+    <div
+      data-testid="report-item"
+      onClick={onClick}
+      className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 hover:border-blue-200 transition-all duration-300 cursor-pointer"
+    >
+      {/* Image container */}
+      <div className="relative overflow-hidden">
         <img
           src={image}
-          alt={`Lost and Found Item at ${location}`}
-          className={`object-cover w-full h-[180px] md:h-[200px] ${imageStyle}`}
+          alt={`Lost and Found: ${title}`}
+          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
         />
 
-        {children ? (
-          children
-        ) : (
-          <div className="flex flex-col items-center gap-1 md:gap-2">
-            <h3>{title}</h3>
-            <p>{location}</p>
-            <div className="flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 27 27"
-                fill="none"
-              >
-                <path
-                  d="M21.375 6.75H5.625C4.38236 6.75 3.375 7.75736 3.375 9V21.375C3.375 22.6176 4.38236 23.625 5.625 23.625H21.375C22.6176 23.625 23.625 22.6176 23.625 21.375V9C23.625 7.75736 22.6176 6.75 21.375 6.75Z"
-                  stroke="#1E1E1E"
-                  strokeWidth="2.66667"
-                />
-                <path
-                  d="M3.375 11.25C3.375 9.12825 3.375 8.0685 4.03425 7.40925C4.6935 6.75 5.75325 6.75 7.875 6.75H19.125C21.2467 6.75 22.3065 6.75 22.9657 7.40925C23.625 8.0685 23.625 9.12825 23.625 11.25H3.375Z"
-                  fill="#1E1E1E"
-                />
-                <path
-                  d="M7.875 3.375V6.75M19.125 3.375V6.75"
-                  stroke="#1E1E1E"
-                  strokeWidth="2.66667"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M11.8125 13.5H8.4375C8.12684 13.5 7.875 13.7518 7.875 14.0625V15.1875C7.875 15.4982 8.12684 15.75 8.4375 15.75H11.8125C12.1232 15.75 12.375 15.4982 12.375 15.1875V14.0625C12.375 13.7518 12.1232 13.5 11.8125 13.5Z"
-                  fill="#1E1E1E"
-                />
-                <path
-                  d="M11.8125 18H8.4375C8.12684 18 7.875 18.2518 7.875 18.5625V19.6875C7.875 19.9982 8.12684 20.25 8.4375 20.25H11.8125C12.1232 20.25 12.375 19.9982 12.375 19.6875V18.5625C12.375 18.2518 12.1232 18 11.8125 18Z"
-                  fill="#1E1E1E"
-                />
-                <path
-                  d="M18.5625 13.5H15.1875C14.8768 13.5 14.625 13.7518 14.625 14.0625V15.1875C14.625 15.4982 14.8768 15.75 15.1875 15.75H18.5625C18.8732 15.75 19.125 15.4982 19.125 15.1875V14.0625C19.125 13.7518 18.8732 13.5 18.5625 13.5Z"
-                  fill="#1E1E1E"
-                />
-                <path
-                  d="M18.5625 18H15.1875C14.8768 18 14.625 18.2518 14.625 18.5625V19.6875C14.625 19.9982 14.8768 20.25 15.1875 20.25H18.5625C18.8732 20.25 19.125 19.9982 19.125 19.6875V18.5625C19.125 18.2518 18.8732 18 18.5625 18Z"
-                  fill="#1E1E1E"
-                />
-              </svg>
-              <p className="text-center">{date_reported}</p>
-            </div>
+        {/* Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+
+        {/* Status badge */}
+        {status && (
+          <div className="absolute top-3 right-3">
+            <span
+              className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow ${
+                status.toLowerCase() === "found"
+                  ? "bg-emerald-500 text-white"
+                  : "bg-red-500 text-white"
+              }`}
+            >
+              {status}
+            </span>
           </div>
         )}
+
+        {/* Category badge */}
+        {category && (
+          <div className="absolute top-3 left-3">
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border shadow-sm ${getCategoryColor(category)}`}
+            >
+              <span>{getCategoryEmoji(category)}</span>
+              {category}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Card body */}
+      <div className="p-4">
+        <h3 className="font-bold text-gray-900 text-base line-clamp-1 mb-1 group-hover:text-blue-600 transition-colors">
+          {title}
+        </h3>
+
+        {description && (
+          <p className="text-gray-500 text-sm line-clamp-2 mb-3">{description}</p>
+        )}
+
+        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+          <div className="flex items-center gap-1 text-gray-500 text-xs min-w-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 384 512" fill="currentColor" className="flex-shrink-0 text-blue-400">
+              <path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/>
+            </svg>
+            <span className="truncate">{location}</span>
+          </div>
+          <div className="flex items-center gap-1 text-gray-400 text-xs flex-shrink-0 ml-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 448 512" fill="currentColor" className="text-blue-400">
+              <path d="M128 0c17.7 0 32 14.3 32 32l0 32 128 0 0-32c0-17.7 14.3-32 32-32s32 14.3 32 32l0 32 48 0c26.5 0 48 21.5 48 48l0 48L0 160l0-48C0 85.5 21.5 64 48 64l48 0 0-32c0-17.7 14.3-32 32-32zM0 192l448 0 0 272c0 26.5-21.5 48-48 48L48 512c-26.5 0-48-21.5-48-48L0 192zm64 80l0 32c0 8.8 7.2 16 16 16l32 0c8.8 0 16-7.2 16-16l0-32c0-8.8-7.2-16-16-16l-32 0c-8.8 0-16 7.2-16 16z"/>
+            </svg>
+            <span>{formattedDate}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* View details footer */}
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-blue-50 group-hover:bg-blue-600 transition-colors duration-300">
+          <span className="text-blue-600 group-hover:text-white text-sm font-semibold transition-colors">
+            View Details
+          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 group-hover:text-white transition-colors">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
       </div>
     </div>
   );
