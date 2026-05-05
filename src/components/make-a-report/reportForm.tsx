@@ -39,6 +39,19 @@ const CustomOption = (props: OptionProps<Option>) => {
   );
 };
 
+const categoryOptions: Option[] = [
+  { value: "Cash", label: "💵 Cash" },
+  { value: "Books", label: "📚 Books" },
+  { value: "Stationery", label: "✏️ Stationery" },
+  { value: "Electronics", label: "📱 Electronics" },
+  { value: "Clothing", label: "👕 Clothing" },
+  { value: "Accessories", label: "👜 Accessories" },
+  { value: "ID/Cards", label: "🪪 ID & Cards" },
+  { value: "Keys", label: "🔑 Keys" },
+  { value: "Jewelry", label: "💍 Jewelry" },
+  { value: "Other", label: "📦 Other" },
+];
+
 const ReportForm: React.FC<FormProps> = ({
   displayReportPreview,
   setDisplayReportPreview,
@@ -53,8 +66,10 @@ const ReportForm: React.FC<FormProps> = ({
     date_reported: "",
     phone_number: "",
     email: "",
+    category: "",
   });
   const [selectedOption, setSelectedOption] = useState<Option | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Option | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormError>({});
 
@@ -96,6 +111,11 @@ const ReportForm: React.FC<FormProps> = ({
     setSelectedOption(selected);
     setFormState((prev) => ({ ...prev, location: selected?.value || "" }));
     setErrors((prev) => ({ ...prev, location: undefined }));
+  };
+
+  const handleCategoryChange = (selected: SingleValue<Option>) => {
+    setSelectedCategory(selected);
+    setFormState((prev) => ({ ...prev, category: selected?.value || "" }));
   };
 
   const handlePhone_numberChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -190,6 +210,22 @@ const ReportForm: React.FC<FormProps> = ({
             </span>
           )}
         </div>
+      </div>
+
+      <div className="relative flex flex-col gap-2 md:gap-4 my-2 md:my-4">
+        <label htmlFor="category" className="text-base md:text-lg font-semibold">
+          Category
+        </label>
+        <Select
+          inputId="category"
+          options={categoryOptions}
+          components={{ Option: CustomOption }}
+          value={selectedCategory}
+          onChange={handleCategoryChange}
+          placeholder="Select item category…"
+          className="text-sm"
+          isMulti={false}
+        />
       </div>
 
       <div className="relative w-full my-2 md:my-4 flex flex-col gap-2 md:gap-4">

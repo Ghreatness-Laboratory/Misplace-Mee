@@ -7,4 +7,5 @@ export interface FormData {
   phone_number: string;
   image: File | null;
   email: string;
+  category: string;
 }
