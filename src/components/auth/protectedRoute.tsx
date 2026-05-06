@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ACCESS_TOKEN, CSRF_TOKEN } from "../../constants"; // Assuming you have the CSRF token stored
-import { BASE_URL } from "../../hooks/useFetch";
-import api from "../../services/api";
+import { supabase } from "../../lib/supabase";
 import Loader from "../common/loader";
 
 interface ProtectedRouteProp {
@@ -14,43 +12,25 @@ function ProtectedRoute({ children }: ProtectedRouteProp) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const authenticateUser = async () => {
-      try {
-        const accessToken = localStorage.getItem(ACCESS_TOKEN);
-        if (!accessToken) {
-          handleUnauthorized();
-          return;
-        }
-
-        const response = await api.post(
-          `${BASE_URL}/auth/verify`,
-          { token: accessToken },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              accept: "application/json",
-              "X-CSRFTOKEN": CSRF_TOKEN || "",
-            },
-          }
-        );
-
-        if (response.status === 200) {
-          setIsAuthorized(true);
-        } else {
-          handleUnauthorized();
-        }
-      } catch (error) {
-        console.error("Authentication error:", error);
-        handleUnauthorized();
+    const check = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsAuthorized(true);
+      } else {
+        setIsAuthorized(false);
+        navigate("/login");
       }
     };
+    check();
 
-    const handleUnauthorized = () => {
-      setIsAuthorized(false);
-      navigate("/login");
-    };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setIsAuthorized(false);
+        navigate("/login");
+      }
+    });
 
-    authenticateUser();
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   if (isAuthorized === null) {

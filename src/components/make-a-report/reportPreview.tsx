@@ -1,18 +1,6 @@
-import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { ACCESS_TOKEN, CSRF_TOKEN } from "../../constants";
-import { BASE_URL } from "../../hooks/useFetch";
+import { supabase } from "../../lib/supabase";
 import { getCategoryColor, getCategoryEmoji } from "../common/filter";
-
-interface ReportFormData {
-  title: string;
-  description: string;
-  location: string;
-  phone_number: string;
-  image?: File;
-  category?: string;
-  status?: string;
-}
 
 interface ReportPreviewProps {
   image?: File | null;
@@ -22,29 +10,22 @@ interface ReportPreviewProps {
   location?: string;
   phone_number?: string;
   category?: string;
+  status?: string;
   onReportSubmit: () => void;
   onCancel: () => void;
   isOpen: boolean;
 }
 
 const ReportPreview: React.FC<ReportPreviewProps> = ({
-  image,
-  title,
-  date_reported,
-  description,
-  location,
-  phone_number,
-  category,
-  onCancel,
-  onReportSubmit,
-  isOpen,
+  image, title, date_reported, description, location,
+  phone_number, category, status, onCancel, onReportSubmit, isOpen,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (image && image instanceof File) {
+    if (image instanceof File) {
       const reader = new FileReader();
       reader.onloadend = () => setImagePreviewUrl(reader.result as string);
       reader.readAsDataURL(image);
@@ -56,89 +37,48 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
     return () => { document.body.style.overflow = "auto"; };
   }, [isOpen]);
 
-  const validateFormData = (data: Partial<ReportFormData>): boolean => {
-    if (!data.title || data.title.length < 1 || data.title.length > 100) {
-      setSubmissionError("Title must be between 1 and 100 characters");
-      return false;
-    }
-    if (!data.description || data.description.length < 1) {
-      setSubmissionError("Description is required");
-      return false;
-    }
-    if (!data.location || data.location.length < 1) {
-      setSubmissionError("Location is required");
-      return false;
-    }
-    if (!data.phone_number || data.phone_number.length < 1) {
-      setSubmissionError("Phone number is required");
-      return false;
-    }
-    return true;
-  };
-
   const handleReportSubmit = async () => {
     setIsSubmitting(true);
     setSubmissionError(null);
 
-    const accessToken = localStorage.getItem(ACCESS_TOKEN);
-    const csrfToken = CSRF_TOKEN;
-
-    if (!csrfToken || !accessToken) {
-      setSubmissionError("Authentication error. Please log in again.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const reportData: ReportFormData = {
-      title: title || "",
-      description,
-      location: location || "",
-      phone_number: phone_number || "",
-      category: category || "",
-    };
-
-    if (!validateFormData(reportData)) {
-      setIsSubmitting(false);
-      return;
-    }
-
-    const formData = new FormData();
-    Object.entries(reportData).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
-        formData.append(key, value.toString());
-      }
-    });
-
-    if (image && image instanceof File) {
-      formData.append("image", image);
-    }
-
     try {
-      await axios.post(`${BASE_URL}/reports/`, formData, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${accessToken}`,
-          "X-CSRFToken": csrfToken,
-        },
-        withCredentials: true,
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setSubmissionError("Authentication error. Please log in again.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      let imageUrl = "";
+      if (image instanceof File) {
+        const ext = image.name.split(".").pop();
+        const path = `reports/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("report-images")
+          .upload(path, image);
+        if (uploadError) throw new Error(uploadError.message);
+        const { data: urlData } = supabase.storage
+          .from("report-images")
+          .getPublicUrl(path);
+        imageUrl = urlData.publicUrl;
+      }
+
+      const { error } = await supabase.from("reports").insert({
+        title: title ?? "",
+        description,
+        location: location ?? "",
+        phone_number: phone_number ?? "",
+        date_reported,
+        status: status ?? "Lost",
+        category: category || null,
+        image: imageUrl,
       });
 
+      if (error) throw new Error(error.message);
       alert("Report submitted successfully!");
       onReportSubmit();
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const errorMessage =
-          error.response?.data?.detail ||
-          error.response?.data?.message ||
-          "Failed to submit the report. Please try again.";
-        setSubmissionError(
-          error.response?.status === 401
-            ? "Your session has expired. Please log in again."
-            : errorMessage
-        );
-      } else {
-        setSubmissionError("An unexpected error occurred. Please try again.");
-      }
+    } catch (err) {
+      setSubmissionError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
       setIsSubmitting(false);
     }
@@ -147,43 +87,26 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
   if (!isOpen) return null;
 
   const formattedDate = date_reported
-    ? new Date(date_reported).toLocaleDateString("en-NG", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+    ? new Date(date_reported).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" })
     : date_reported;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
-
-      {/* Panel */}
       <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h3 className="text-lg font-bold text-gray-900">Preview Report</h3>
-          <button
-            onClick={onCancel}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-600"
-          >
+          <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-600">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 6 6 18M6 6l12 12"/>
             </svg>
           </button>
         </div>
 
-        {/* Scrollable body */}
         <div className="overflow-y-auto flex-1">
-          {/* Image */}
           <div className="relative">
             {imagePreviewUrl ? (
-              <img
-                src={imagePreviewUrl}
-                alt="Preview"
-                className="w-full h-52 object-cover"
-              />
+              <img src={imagePreviewUrl} alt="Preview" className="w-full h-52 object-cover" />
             ) : (
               <div className="w-full h-52 bg-gray-100 flex items-center justify-center text-gray-400">
                 <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 640 512" fill="currentColor">
@@ -191,7 +114,6 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
                 </svg>
               </div>
             )}
-            {/* Category badge on image */}
             {category && (
               <div className="absolute top-3 left-3">
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border shadow-sm ${getCategoryColor(category)}`}>
@@ -202,10 +124,8 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
             )}
           </div>
 
-          {/* Details */}
           <div className="p-5 space-y-4">
             <h4 className="text-xl font-bold text-gray-900">{title}</h4>
-
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex items-start gap-2 text-gray-600">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 384 512" fill="currentColor" className="text-blue-500 mt-0.5 flex-shrink-0">
@@ -226,13 +146,11 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
                 <span>+234 {phone_number || "—"}</span>
               </div>
             </div>
-
             {description && (
               <div className="pt-2 border-t border-gray-100">
                 <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
               </div>
             )}
-
             {submissionError && (
               <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512" fill="currentColor" className="mt-0.5 flex-shrink-0">
@@ -241,7 +159,6 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({
                 {submissionError}
               </div>
             )}
-
             <div className="flex gap-3 pt-2">
               <button
                 onClick={handleReportSubmit}

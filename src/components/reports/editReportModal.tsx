@@ -1,8 +1,6 @@
-import axios from "axios";
 import React, { ChangeEvent, useEffect, useRef, useState } from "react";
 import Select, { SingleValue } from "react-select";
-import { ACCESS_TOKEN, CSRF_TOKEN } from "../../constants";
-import { BASE_URL } from "../../hooks/useFetch";
+import { supabase } from "../../lib/supabase";
 import { ReportProps } from "../../types/report.types";
 import { CATEGORIES } from "../common/filter";
 
@@ -142,40 +140,43 @@ const EditReportModal: React.FC<EditReportModalProps> = ({ report, onClose, onSa
     setSaving(true);
     setSaveError(null);
 
-    const accessToken = localStorage.getItem(ACCESS_TOKEN);
-    if (!CSRF_TOKEN || !accessToken) {
-      setSaveError("Authentication error. Please log in again.");
-      setSaving(false);
-      return;
-    }
-
-    const fd = new FormData();
-    fd.append("title", form.title.trim());
-    fd.append("description", form.description.trim());
-    fd.append("location", form.location);
-    fd.append("date_reported", form.date_reported);
-    fd.append("phone_number", form.phone_number);
-    if (form.category) fd.append("category", form.category);
-    if (form.status) fd.append("status", form.status);
-    if (form.newImage) fd.append("image", form.newImage);
-
     try {
-      const { data } = await axios.patch<ReportProps>(`${BASE_URL}/reports/${report.id}`, fd, {
-        headers: {
-          accept: "application/json",
-          "Content-Type": "multipart/form-data",
-          "X-CSRFTOKEN": CSRF_TOKEN,
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      let imageUrl = report.image;
+
+      if (form.newImage) {
+        const ext = form.newImage.name.split(".").pop();
+        const path = `reports/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("report-images")
+          .upload(path, form.newImage);
+        if (uploadError) throw new Error(uploadError.message);
+        const { data: urlData } = supabase.storage
+          .from("report-images")
+          .getPublicUrl(path);
+        imageUrl = urlData.publicUrl;
+      }
+
+      const { data, error } = await supabase
+        .from("reports")
+        .update({
+          title: form.title.trim(),
+          description: form.description.trim(),
+          location: form.location,
+          date_reported: form.date_reported,
+          phone_number: form.phone_number,
+          category: form.category || null,
+          status: form.status,
+          image: imageUrl,
+        })
+        .eq("id", report.id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
       onSaved({ ...report, ...data });
       onClose();
     } catch (err) {
-      setSaveError(
-        axios.isAxiosError(err)
-          ? err.response?.data?.detail || err.response?.data?.message || "Failed to save. Please try again."
-          : "An unexpected error occurred."
-      );
+      setSaveError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
       setSaving(false);
     }

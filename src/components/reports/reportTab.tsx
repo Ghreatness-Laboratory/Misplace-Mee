@@ -1,12 +1,12 @@
 import React from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
-import useFetch from "../../hooks/useFetch";
+import useReports from "../../hooks/useReports";
 import { ReportProps } from "../../types/report.types";
 import Loader from "../common/loader";
 import Item from "../common/reportItem";
 
 const ReportTab: React.FC = () => {
-  const { data: reports, loading, error } = useFetch<ReportProps[]>("/reports/");
+  const { data: reports, loading, error } = useReports();
 
   if (loading) { 
     return <Loader />
@@ -17,7 +17,7 @@ const ReportTab: React.FC = () => {
       <div className="flex flex-col items-center justify-center min-h-[50vh] my-10 max-w-[1280px] mx-4 sm:mx-8 xl:mx-auto px-4 sm:px-8 lg:px-10 bg-red-50/10 text-red-500 rounded-lg shadow-sm text-center">
         <h1 className="text-3xl font-bold">Oops!</h1>
         <p className="text-lg mt-2">Something went wrong while fetching the reports.</p>
-        <p className="text-base mt-1">Error {error.status}: {error.message}</p>
+        <p className="text-base mt-1">{error}</p>
         <button
           className="mt-4 py-2 px-6 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all"
           onClick={() => window.location.reload()}
