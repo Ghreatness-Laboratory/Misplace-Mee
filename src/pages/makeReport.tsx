@@ -48,6 +48,7 @@ const MakeAReport: React.FC = () => {
           location={formData.location}
           phone_number={formData.phone_number}
           category={formData.category}
+          status={formData.status}
           onReportSubmit={handleReportSubmit}
           onCancel={resetForm}
         />
