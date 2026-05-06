@@ -29,7 +29,7 @@ const MyReportsTab: React.FC = () => {
 
   return (
     <div>
-      {reports?.length == 0 ?
+      {reports.length === 0 ?
         (
           <div className="flex flex-col gap-5 items-center justify-center text-xl font-semibold flex-wrap min-h-[53vh]">
             <svg className="w-16 h-16 text-blue-500" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 250 250" fill="none">

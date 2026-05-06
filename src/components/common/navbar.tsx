@@ -52,12 +52,10 @@ export const universities = [
 const AUTH_PATHS = ["/login", "/register"];
 
 const Navbar: React.FC<NavbarProps> = ({ isNavbarOpen, handleNavClick }) => {
-  const [, setSelectedMenu] = useState<number | null>(null);
   const [currentLogo, setCurrentLogo] = useState<string>("");
   const [currentEmail, setCurrentEmail] = useState<string>("");
   const [currentPhone, setCurrentPhone] = useState<string>("");
   const [currentSocialMedia, setCurrentSocialMedia] = useState<SocialMediaLinks>({});
-  const [isLoggedIn] = useState(false);
   const location = useLocation();
 
   if (AUTH_PATHS.includes(location.pathname)) return null;
@@ -131,7 +129,6 @@ const Navbar: React.FC<NavbarProps> = ({ isNavbarOpen, handleNavClick }) => {
               <Link
                 key={index}
                 to={menu.href}
-                onClick={() => setSelectedMenu(index)}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-150 ${
                   isActive
                     ? "bg-blue-50 text-blue-600"
@@ -146,7 +143,7 @@ const Navbar: React.FC<NavbarProps> = ({ isNavbarOpen, handleNavClick }) => {
 
         {/* Right actions */}
         <div className="flex items-center gap-3">
-          {isLoggedIn || isAdminArea ? (
+          {isAdminArea ? (
             <Link to="/">
               <button
                 onClick={handleLogout}
