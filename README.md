@@ -1,6 +1,6 @@
 # **MisplaceMe**
 
-MisplaceMe is a web application designed to help students and staff locate lost items on campus, specifically tailored for private universities. It simplifies the process of searching for lost belongings while providing admins with tools to manage reports of found items efficiently. The website is designed to connect people who have lost items with those who have found them. Our platform provides a simple and efficient way to report lost or found items, facilitating reunions and reducing losses.
+MisplaceMe is a web application designed to help students and staff locate lost items on campus, specifically tailored for private universities but we will be focuaing on Bells University. It simplifies the process of searching for lost belongings while providing admins with tools to manage reports of found items efficiently. The website is designed to connect people who have lost items with those who have found them. Our platform provides a simple and efficient way to report lost or found items, facilitating reunions and reducing losses.
 
 
 ---
