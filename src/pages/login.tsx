@@ -2,16 +2,11 @@ import React, { ChangeEvent, FormEvent, useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import defaultLogo from "../assets/images/misplaceme logo icon main@4x.png";
-import { ACCESS_TOKEN, REFRESH_TOKEN } from "../constants";
-import { BASE_URL } from "../hooks/useFetch";
+import { supabase } from "../lib/supabase";
 
 interface LoginState {
-  username: string;
+  email: string;
   password: string;
-}
-
-interface ApiError {
-  message: string;
 }
 
 const Login: React.FC = () => {
@@ -21,11 +16,11 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(false);
-  const [state, setState] = useState<LoginState>({ username: "", password: "" });
+  const [state, setState] = useState<LoginState>({ email: "", password: "" });
 
   const validateForm = (): boolean => {
     const newErrors: Partial<LoginState> = {};
-    if (!state.username.trim()) newErrors.username = "Username is required";
+    if (!state.email.trim()) newErrors.email = "Email is required";
     if (!state.password) newErrors.password = "Password is required";
     else if (state.password.length < 8) newErrors.password = "Password must be at least 8 characters";
     setErrors(newErrors);
@@ -43,20 +38,12 @@ const Login: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${BASE_URL}/auth/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state),
+      const { error } = await supabase.auth.signInWithPassword({
+        email: state.email,
+        password: state.password,
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error((data as ApiError).message || "Login failed. Please try again.");
-      if (rememberMe) localStorage.setItem("rememberedUsername", state.username);
-      if (data.access) {
-        localStorage.setItem(ACCESS_TOKEN, data.access);
-        localStorage.setItem(REFRESH_TOKEN, data.refresh);
-      } else {
-        throw new Error("No token received");
-      }
+      if (error) throw new Error(error.message);
+      if (rememberMe) localStorage.setItem("rememberedEmail", state.email);
       navigate("/home");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -88,22 +75,22 @@ const Login: React.FC = () => {
           {/* Form */}
           <div className="px-8 py-8">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              {/* Username */}
+              {/* Email */}
               <div>
-                <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Username
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Email
                 </label>
                 <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  value={state.username}
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={state.email}
                   onChange={handleChange}
-                  placeholder="Enter your username"
+                  placeholder="Enter your email"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
                 />
-                {errors.username && (
-                  <p className="text-xs text-red-500 mt-1">{errors.username}</p>
+                {errors.email && (
+                  <p className="text-xs text-red-500 mt-1">{errors.email}</p>
                 )}
               </div>
 

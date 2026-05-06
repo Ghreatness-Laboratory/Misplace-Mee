@@ -2,7 +2,7 @@ import React, { ChangeEvent, FormEvent, useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import defaultLogo from "../assets/images/misplaceme logo icon main@4x.png";
-import { BASE_URL } from "../hooks/useFetch";
+import { supabase } from "../lib/supabase";
 
 interface RegisterState {
   username: string;
@@ -53,14 +53,13 @@ const Register: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${BASE_URL}/accounts/register/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state),
+      const { error } = await supabase.auth.signUp({
+        email: state.email,
+        password: state.password,
+        options: { data: { phone_number: state.phone_number } },
       });
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.message || "Registration failed. Please try again.");
+      if (error) {
+        setError(error.message);
       } else {
         navigate("/login");
       }

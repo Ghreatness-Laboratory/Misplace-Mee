@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import useFetch from "../../hooks/useFetch";
+import useReports from "../../hooks/useReports";
 import { ReportProps } from "../../types/report.types";
 import Filter from "./filter";
 import ItemModal from "./itemModal";
@@ -14,7 +14,7 @@ const ReportList = () => {
   const [selectedItem, setSelectedItem] = useState<ReportProps | null>(null);
   const itemsPerPage = 6;
 
-  const { data: items, loading, error } = useFetch<ReportProps[]>("/reports/");
+  const { data: items, loading, error } = useReports();
 
   const handleLocationChange = (location: string) => {
     setSelectedLocation(location);
@@ -31,7 +31,7 @@ const ReportList = () => {
     setCurrentPage(1);
   };
 
-  const filteredItems = (items ?? []).filter((item) => {
+  const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.description ?? "").toLowerCase().includes(searchQuery.toLowerCase());
@@ -57,7 +57,7 @@ const ReportList = () => {
       <div className="flex flex-col items-center justify-center min-h-[50vh] my-10 max-w-[1280px] mx-4 sm:mx-8 xl:mx-auto px-4 sm:px-8 lg:px-10 bg-red-50/10 text-red-500 rounded-lg shadow-sm text-center">
         <h1 className="text-3xl font-bold">Oops!</h1>
         <p className="text-lg mt-2">Something went wrong while fetching the reports.</p>
-        <p className="text-base mt-1">Error {error.status}: {error.message}</p>
+        <p className="text-base mt-1">{error}</p>
         <button
           className="mt-4 py-2 px-6 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all"
           onClick={() => window.location.reload()}
@@ -81,13 +81,12 @@ const ReportList = () => {
               Browse Lost Items
             </h2>
             <p className="text-gray-500 text-base">
-              {items?.length ?? 0} item{(items?.length ?? 0) !== 1 ? "s" : ""} listed on campus — search, filter, and contact to claim yours
+              {items.length} item{items.length !== 1 ? "s" : ""} listed on campus — search, filter, and contact to claim yours
             </p>
           </div>
 
           {/* Search + Filter bar */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-8 flex flex-col gap-4">
-            {/* Search input */}
             <div className="relative w-full">
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 50 45" fill="none">
@@ -114,7 +113,6 @@ const ReportList = () => {
               )}
             </div>
 
-            {/* Category + Location filter */}
             <Filter
               onFilterChange={handleLocationChange}
               onCategoryChange={handleCategoryChange}
@@ -122,7 +120,7 @@ const ReportList = () => {
             />
           </div>
 
-          {/* Active filters summary */}
+          {/* Active filters */}
           {(selectedCategory !== "All" || selectedLocation !== "All" || searchQuery) && (
             <div className="flex items-center flex-wrap gap-2 mb-6 text-sm text-gray-600">
               <span className="text-gray-400">Showing results for:</span>
@@ -148,7 +146,6 @@ const ReportList = () => {
             </div>
           )}
 
-          {/* Grid or empty state */}
           {filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[40vh] py-16 text-center">
               <div className="text-6xl mb-4">🔍</div>
@@ -181,7 +178,6 @@ const ReportList = () => {
                 ))}
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 mt-10">
                   <button
@@ -194,7 +190,6 @@ const ReportList = () => {
                       <path d="m15 18-6-6 6-6"/>
                     </svg>
                   </button>
-
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
@@ -208,7 +203,6 @@ const ReportList = () => {
                       {page}
                     </button>
                   ))}
-
                   <button
                     className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                     onClick={() => setCurrentPage((p) => p + 1)}

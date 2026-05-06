@@ -1,7 +1,6 @@
-import axios from "axios";
 import React, { useEffect, useMemo, useState } from "react";
-import { ACCESS_TOKEN, CSRF_TOKEN } from "../../constants";
-import useFetch, { BASE_URL } from "../../hooks/useFetch";
+import useReports from "../../hooks/useReports";
+import { supabase } from "../../lib/supabase";
 import { ReportProps } from "../../types/report.types";
 import { getCategoryColor, getCategoryEmoji } from "../common/filter";
 import Loader from "../common/loader";
@@ -16,7 +15,7 @@ const ReportsHistory: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [editingReport, setEditingReport] = useState<ReportProps | null>(null);
 
-  const { data: reports, error } = useFetch<ReportProps[]>("/reports/");
+  const { data: reports, error } = useReports();
   const [reportList, setReportList] = useState<ReportProps[]>([]);
 
   useEffect(() => {
@@ -45,25 +44,12 @@ const ReportsHistory: React.FC = () => {
     if (!window.confirm("Delete this report? This cannot be undone.")) return;
     setDeleting(true);
     setActionError(null);
-
-    const accessToken = localStorage.getItem(ACCESS_TOKEN);
-    if (!CSRF_TOKEN || !accessToken) {
-      setActionError("Authentication error. Please log in again.");
-      setDeleting(false);
-      return;
-    }
-
     try {
-      await axios.delete(`${BASE_URL}/reports/${id}`, {
-        headers: {
-          accept: "application/json",
-          "X-CSRFTOKEN": CSRF_TOKEN,
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const { error } = await supabase.from("reports").delete().eq("id", id);
+      if (error) throw new Error(error.message);
       setReportList((prev) => prev.filter((r) => r.id !== id));
-    } catch {
-      setActionError("Failed to delete. Please try again.");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to delete. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -73,14 +59,14 @@ const ReportsHistory: React.FC = () => {
     setReportList((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
   };
 
-  if (!reports && !error) return <Loader />;
+  if (reports.length === 0 && !error) return <Loader />;
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-red-500 text-center p-8">
         <h1 className="text-3xl font-bold mb-2">Oops!</h1>
         <p className="text-lg">Something went wrong while fetching the reports.</p>
-        <p className="text-base mt-1">Error {error.status}: {error.message}</p>
+        <p className="text-base mt-1">{error}</p>
         <button
           className="mt-4 py-2 px-6 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all"
           onClick={() => window.location.reload()}

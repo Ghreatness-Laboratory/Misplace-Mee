@@ -16,10 +16,8 @@ describe("ReportList Component", () => {
       location: "Classroom",
       date_reported: "15-8-2024",
       image: "test-image-1.jpg",
-      location_name: "",
       status: "",
       description: "",
-      reporter: 1,
       phone_number: "",
     },
     {
@@ -28,10 +26,8 @@ describe("ReportList Component", () => {
       location: "Football Field",
       date_reported: "10-9-2024",
       image: "test-image-2.jpg",
-      location_name: "",
       status: "",
       description: "",
-      reporter: 2,
       phone_number: "",
     },
   ];
