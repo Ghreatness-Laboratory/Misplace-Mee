@@ -5,9 +5,8 @@ import defaultLogo from "../assets/images/misplaceme logo icon main@4x.png";
 import { supabase } from "../lib/supabase";
 
 interface RegisterState {
-  username: string;
-  password: string;
   email: string;
+  password: string;
   phone_number: string;
 }
 
@@ -19,15 +18,13 @@ const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [agreed, setAgreed] = useState(false);
   const [state, setState] = useState<RegisterState>({
-    username: "",
-    password: "",
     email: "",
+    password: "",
     phone_number: "",
   });
 
   const validate = () => {
     const newErrors: Partial<RegisterState> = {};
-    if (!state.username.trim()) newErrors.username = "Username is required";
     if (!state.email.trim()) newErrors.email = "Email is required";
     if (!state.phone_number) newErrors.phone_number = "Phone number is required";
     if (!state.password || state.password.length < 8)
@@ -75,54 +72,33 @@ const Register: React.FC = () => {
       data-testid="login-page"
       className="min-h-screen bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 flex items-center justify-center p-4"
     >
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Top band */}
           <div className="bg-blue-600 px-8 py-6 text-center">
             <img src={defaultLogo} alt="MisplaceMe" className="w-14 h-14 object-contain mx-auto mb-3" />
             <h1 className="text-2xl font-extrabold text-white">Admin Registration</h1>
             <p className="text-blue-200 text-sm mt-1">Create a new administrator account</p>
           </div>
 
-          {/* Form */}
           <div className="px-8 py-8">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              {/* Two-column: username + email */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="username" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Username <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="username"
-                    name="username"
-                    type="text"
-                    value={state.username}
-                    onChange={handleChange}
-                    placeholder="e.g. admin_john"
-                    className={inputCls(!!errors.username)}
-                  />
-                  {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
-                </div>
 
-                <div>
-                  <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={state.email}
-                    onChange={handleChange}
-                    placeholder="you@example.com"
-                    className={inputCls(!!errors.email)}
-                  />
-                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
-                </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={state.email}
+                  onChange={handleChange}
+                  placeholder="you@example.com"
+                  className={inputCls(!!errors.email)}
+                />
+                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
               </div>
 
-              {/* Phone */}
               <div>
                 <label htmlFor="phone_number" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Phone Number <span className="text-red-500">*</span>
@@ -149,7 +125,6 @@ const Register: React.FC = () => {
                 {errors.phone_number && <p className="text-xs text-red-500 mt-1">{errors.phone_number}</p>}
               </div>
 
-              {/* Password */}
               <div>
                 <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Password <span className="text-red-500">*</span>
@@ -175,7 +150,6 @@ const Register: React.FC = () => {
                 {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
               </div>
 
-              {/* Terms */}
               <label className="flex items-start gap-2.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -191,7 +165,6 @@ const Register: React.FC = () => {
                 </span>
               </label>
 
-              {/* Error */}
               {error && (
                 <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 512 512" fill="currentColor" className="mt-0.5 flex-shrink-0">
@@ -201,7 +174,6 @@ const Register: React.FC = () => {
                 </div>
               )}
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={loading}

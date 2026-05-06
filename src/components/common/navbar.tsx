@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FaFacebook, FaInstagram, FaLinkedin, FaTwitter } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
 import bellsLogo from "../../assets/images/bells-university-of-technology-logo-transparent 1.svg";
 import defaultLogo from "../../assets/images/misplaceme logo icon main@4x.png";
 
@@ -90,7 +91,8 @@ const Navbar: React.FC<NavbarProps> = ({ isNavbarOpen, handleNavClick }) => {
     fetchUserData();
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     localStorage.clear();
   };
 
