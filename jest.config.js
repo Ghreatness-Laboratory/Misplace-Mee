@@ -1,4 +1,3 @@
-#qudus
 module.exports = {
   preset: 'ts-jest', // Use ts-jest for TypeScript support
   testEnvironment: 'jsdom', // Suitable for testing React components
