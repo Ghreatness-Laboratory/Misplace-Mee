@@ -1,3 +1,4 @@
+#qudus
 export default {
   plugins: {
     tailwindcss: {},
